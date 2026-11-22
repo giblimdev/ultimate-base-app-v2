@@ -1,0 +1,178 @@
+/*
+path :           app/(app)/scrum/projects/page.tsx
+tag :            ["scrum", "projects", "list", "page", "server", "crud"]
+projectId:       <UltimateBaseApp>
+type:            page
+generic:         false
+
+role:            Page liste des projets Scrum (/scrum/projects). Server
+                 Component wrapper avec <Suspense> (requis par Next.js 16 +
+                 cacheComponents : l'appel DB listScrumProjects doit se faire
+                 sous une limite Suspense). Le composant enfant ProjectsContent
+                 charge les projets, affiche une grille de ProjectSummaryCard
+                 cliquables (lien vers le hub du projet), un bouton « Nouveau
+                 projet » et un état vide. Remplace l'ancien contenu dupliqué
+                 de new/page.tsx.
+
+flow:            ProjectsPage() → <Suspense fallback> → ProjectsContent() →
+                 listScrumProjects() → si vide : état vide + CTA → sinon :
+                 grille <Link><ProjectSummaryCard/></Link>.
+
+ecosystem:       Scrum = [
+                   "@/app/(app)/scrum/actions/dnd.ts",
+                   "@/app/(app)/scrum/actions/epic.ts",
+                   "@/app/(app)/scrum/actions/feature.ts",
+                   "@/app/(app)/scrum/actions/persona.ts",
+                   "@/app/(app)/scrum/actions/project.ts",
+                   "@/app/(app)/scrum/actions/sprint.ts",
+                   "@/app/(app)/scrum/actions/task.ts",
+                   "@/app/(app)/scrum/actions/us.ts",
+                   "@/app/(app)/scrum/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/dnd/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/edit/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/epics/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/features/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/personas/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/project-detail-content.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/sprints/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/tasks/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/us/page.tsx",
+                   "@/app/(app)/scrum/projects/new/page.tsx",
+                   "@/app/(app)/scrum/projects/page.tsx",
+                   "@/components/scrum/DeleteProjectButton.tsx",
+                   "@/components/scrum/DndBoard.tsx",
+                   "@/components/scrum/EpicBoard.tsx",
+                   "@/components/scrum/FeatureBoard.tsx",
+                   "@/components/scrum/JsonEditor.tsx",
+                   "@/components/scrum/PersonaBoard.tsx",
+                   "@/components/scrum/ProjectDndBoards.tsx",
+                   "@/components/scrum/ProjectForm.tsx",
+                   "@/components/scrum/ProjectSummaryCard.tsx",
+                   "@/components/scrum/SprintBoard.tsx",
+                   "@/components/scrum/TaskBoard.tsx",
+                   "@/components/scrum/UserStoryBoard.tsx",
+                   "@/lib/scrum/access.ts",
+                   "@/lib/scrum/defaults.ts",
+                   "@/lib/scrum/json-io.ts",
+                   "@/lib/scrum/mutations.ts",
+                   "@/lib/scrum/queries.ts",
+                   "@/lib/scrum/schema.ts",
+                   "@/lib/scrum/types.ts",
+                 ]
+relatedFiles:    ["@/lib/scrum/queries.ts",
+                  "@/components/scrum/ProjectSummaryCard.tsx",
+                  "@/app/(app)/scrum/projects/new/page.tsx",
+                  "@/app/(app)/scrum/projects/[projectId]/page.tsx"]
+imports:         ["react", "next/link", "lucide-react",
+                  "@/lib/scrum/queries",
+                  "@/components/scrum/ProjectSummaryCard",
+                  "@/components/ui/button"]
+exports:         ["default ProjectsPage"]
+useBy:           []
+
+userStories:     ["*en tant qu'utilisateur je veux voir la liste de mes projets Scrum",
+                  "*en tant qu'utilisateur je veux ouvrir un projet depuis la liste"]
+status:          wip
+pathChecked:     ✘false
+metaDataChecked: ✘false
+scriptChecked:   ✘false
+*/
+import { Suspense } from "react";
+import Link from "next/link";
+import { FolderKanban, Plus, Upload } from "lucide-react";
+import { listScrumProjects } from "@/lib/scrum/queries";
+import { ProjectSummaryCard } from "@/components/scrum/ProjectSummaryCard";
+import { Button } from "@/components/ui/button";
+
+async function ProjectsContent() {
+  const projects = await listScrumProjects();
+
+  if (projects.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-card/50 px-4 py-14 text-center">
+        <span
+          className="flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+          aria-hidden="true"
+        >
+          <FolderKanban className="size-5" />
+        </span>
+        <h2 className="text-base font-semibold">
+          Aucun projet pour l&apos;instant
+        </h2>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Créez votre premier projet Scrum pour commencer à décrire vos
+          features, epics, user stories et sprints.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            nativeButton={false}
+            variant="outline"
+            render={<Link href="/scrum/projects/import" />}
+          >
+            <Upload className="size-4" aria-hidden />
+            Importer
+          </Button>
+          <Button
+            nativeButton={false}
+            render={<Link href="/scrum/projects/new" />}
+          >
+            <Plus className="size-4" aria-hidden />
+            Nouveau projet
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+      {projects.map((project) => (
+        <li key={project.id} className="min-w-0">
+          <Link
+            href={`/scrum/projects/${project.id}`}
+            aria-label={`Ouvrir le projet ${project.name}`}
+            className="block h-full rounded-xl transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            <ProjectSummaryCard project={project} />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function ProjectsPage() {
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Projets Scrum
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Vos projets, de la feature à la tâche.
+          </p>
+        </div>
+        <Button
+          nativeButton={false}
+          className="w-fit"
+          render={<Link href="/scrum/projects/new" />}
+        >
+          <Plus className="size-4" aria-hidden />
+          Nouveau projet
+        </Button>
+      </header>
+
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted-foreground">
+            Chargement des projets…
+          </p>
+        }
+      >
+        <ProjectsContent />
+      </Suspense>
+    </div>
+  );
+}

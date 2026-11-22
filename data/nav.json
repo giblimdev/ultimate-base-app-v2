@@ -38,30 +38,17 @@
     "icon": "ListChecks",
     "accent": "text-violet-600 dark:text-violet-400",
     "items": [
-      
-        {
+      {
         "label": "Projets",
         "href": "/scrum/projects",
         "icon": "FolderKanban",
         "status": "ready"
       },
       {
-        "label": "Sprints",
-        "href": "/scrum/sprints",
-        "icon": "CalendarRange",
-        "status": "planned"
-      },
-      {
-        "label": "User Stories",
-        "href": "/scrum/us",
-        "icon": "ListTodo",
-        "status": "planned"
-      },
-      {
-        "label": "Epics",
-        "href": "/scrum/epics",
-        "icon": "Target",
-        "status": "planned"
+        "label": "Importer un projet",
+        "href": "/scrum/projects/import",
+        "icon": "FileCode2",
+        "status": "ready"
       }
     ]
   },

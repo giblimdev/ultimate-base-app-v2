@@ -1288,9 +1288,9 @@ model PostMedia {
   @@map("post_media")
 }
 
-///////////////////////////
-/////     DB JSON     /////
-///////////////////////////
+////////////////////////
+/////     Scrum    /////
+////////////////////////
 
 model Scrum {
   id          String     @id @default(cuid())
@@ -1299,10 +1299,14 @@ model Scrum {
   authorId    String? // FK vers User (auteur du contenu)
   createdAt   DateTime   @default(now()) // date de création
   updatedAt   DateTime   @updatedAt // date de dernière modification
-  deltedAt    DateTime?
+  deletedAt   DateTime?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // suppression workspace → suppression posts
   author      User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
 }
+
+///////////////////////////
+/////     DB JSON     /////
+///////////////////////////
 
 model SaveReciepes {
   id           String     @id @default(cuid())
@@ -1311,7 +1315,7 @@ model SaveReciepes {
   authorId     String? // FK vers User (auteur du contenu)
   createdAt    DateTime   @default(now()) // date de création
   updatedAt    DateTime   @updatedAt // date de dernière modification
-  deltedAt     DateTime?
+  deletedAt    DateTime?
   workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // suppression workspace → suppression posts
   author       User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
 }
@@ -1323,7 +1327,7 @@ model SavePlantes {
   authorId    String? // FK vers User (auteur du contenu)
   createdAt   DateTime   @default(now()) // date de création
   updatedAt   DateTime   @updatedAt // date de dernière modification
-  deltedAt    DateTime?
+  deletedAt   DateTime?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // suppression workspace → suppression posts
   author      User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
 }
@@ -1335,7 +1339,7 @@ model SavePosts {
   authorId    String? // FK vers User (auteur du contenu)
   createdAt   DateTime   @default(now()) // date de création
   updatedAt   DateTime   @updatedAt // date de dernière modification
-  deltedAt    DateTime?
+  deletedAt   DateTime?
   workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade) // suppression workspace → suppression posts
   author      User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
 }

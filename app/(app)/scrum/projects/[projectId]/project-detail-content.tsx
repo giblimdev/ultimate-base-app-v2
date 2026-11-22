@@ -6,22 +6,23 @@ projectId:       <UltimateBaseApp>
 type:            component
 generic:         false
 
-role:            Contenu de la page hub d'un projet Scrum. Server
-                 Component async : await params, charge l'arbre via
-                 loadScrumTree, affiche le résumé du projet
-                 (ProjectSummaryCard), les liens vers les boards CRUD/DnD
-                 (features, personas, epics, user stories, tasks, sprints)
-                 et un lien vers l'édition du projet. Les 6 boards sont
-                 désormais ready: true. Si l'arbre est absent, affiche un
-                 état vide avec retour à la liste. Mobile first,
-                 responsive, accessible.
+role:            Contenu de la page hub d'un projet Scrum. Server Component
+                 async : await params, charge l'arbre via loadScrumTree,
+                 affiche le résumé du projet (ProjectSummaryCard), les liens
+                 vers les 6 boards CRUD ET vers la page Glisser-déposer
+                 (/dnd), un lien vers l'édition et le bouton de suppression
+                 (DeleteProjectButton). Si l'arbre est absent, affiche un
+                 état vide avec retour à la liste. Mobile first, responsive,
+                 accessible.
 
 flow:            ProjectDetailContent({ params }) → await params → await
-                 loadScrumTree(projectId) → si null: NotFoundState →
-                 sinon: header (nom + clé + statut) + ProjectSummaryCard
-                 + grille de liens boards (ready: true) + lien éditer.
+                 loadScrumTree(projectId) → si null : NotFoundState → sinon :
+                 header (nom + clé + méthodologie + visibilité + Éditer +
+                 Supprimer) + ProjectSummaryCard + grille de liens boards
+                 (CRUD + DnD).
 
 ecosystem:       Scrum = [
+                   "@/app/(app)/scrum/actions/dnd.ts",
                    "@/app/(app)/scrum/actions/epic.ts",
                    "@/app/(app)/scrum/actions/feature.ts",
                    "@/app/(app)/scrum/actions/persona.ts",
@@ -30,6 +31,7 @@ ecosystem:       Scrum = [
                    "@/app/(app)/scrum/actions/task.ts",
                    "@/app/(app)/scrum/actions/us.ts",
                    "@/app/(app)/scrum/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/dnd/page.tsx",
                    "@/app/(app)/scrum/projects/[projectId]/edit/page.tsx",
                    "@/app/(app)/scrum/projects/[projectId]/epics/page.tsx",
                    "@/app/(app)/scrum/projects/[projectId]/features/page.tsx",
@@ -41,10 +43,13 @@ ecosystem:       Scrum = [
                    "@/app/(app)/scrum/projects/[projectId]/us/page.tsx",
                    "@/app/(app)/scrum/projects/new/page.tsx",
                    "@/app/(app)/scrum/projects/page.tsx",
+                   "@/components/scrum/DeleteProjectButton.tsx",
+                   "@/components/scrum/DndBoard.tsx",
                    "@/components/scrum/EpicBoard.tsx",
                    "@/components/scrum/FeatureBoard.tsx",
                    "@/components/scrum/JsonEditor.tsx",
                    "@/components/scrum/PersonaBoard.tsx",
+                   "@/components/scrum/ProjectDndBoards.tsx",
                    "@/components/scrum/ProjectForm.tsx",
                    "@/components/scrum/ProjectSummaryCard.tsx",
                    "@/components/scrum/SprintBoard.tsx",
@@ -60,28 +65,33 @@ ecosystem:       Scrum = [
                  ]
 relatedFiles:    ["@/lib/scrum/queries.ts",
                   "@/components/scrum/ProjectSummaryCard.tsx",
+                  "@/components/scrum/DeleteProjectButton.tsx",
                   "@/app/(app)/scrum/projects/[projectId]/page.tsx",
-                  "@/components/scrum/ProjectForm.tsx",
+                  "@/app/(app)/scrum/projects/[projectId]/dnd/page.tsx",
                   "@/app/(app)/scrum/projects/[projectId]/edit/page.tsx"]
 imports:         ["next/link", "lucide-react", "@/lib/scrum/queries",
                   "@/components/scrum/ProjectSummaryCard",
+                  "@/components/scrum/DeleteProjectButton",
                   "@/components/ui/badge", "@/components/ui/button",
                   "@/components/ui/card"]
 exports:         ["ProjectDetailContent"]
 useBy:           ["@/app/(app)/scrum/projects/[projectId]/page.tsx"]
 
 userStories:     ["*en tant qu'utilisateur je veux voir le résumé d'un projet et accéder à ses boards",
-                  "*en tant qu'utilisateur je veux éditer les infos d'un projet"]
+                  "*en tant qu'utilisateur je veux éditer ou supprimer un projet",
+                  "*en tant qu'utilisateur je veux accéder au glisser-déposer depuis le projet"]
 status:          wip
-pathChecked:     ✔true
-metaDataChecked: ✔true
-scriptChecked:   ✔true
+pathChecked:     ✘false
+metaDataChecked: ✘false
+scriptChecked:   ✘false
 */
 import Link from "next/link";
 import {
   ArrowLeft,
   CalendarRange,
   ClipboardList,
+  FileJson,
+  Kanban,
   Layers,
   ListTodo,
   Pencil,
@@ -91,6 +101,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { loadScrumTree } from "@/lib/scrum/queries";
 import { ProjectSummaryCard } from "@/components/scrum/ProjectSummaryCard";
+import { DeleteProjectButton } from "@/components/scrum/DeleteProjectButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,6 +171,22 @@ function boardsFor(projectId: string): BoardLink[] {
       icon: CalendarRange,
       ready: true,
     },
+    {
+      id: "dnd",
+      label: "Glisser-déposer",
+      description: "Rattacher tâches, US, epics et sprints.",
+      href: `/scrum/projects/${projectId}/dnd`,
+      icon: Kanban,
+      ready: true,
+    },
+    {
+      id: "json",
+      label: "Import / export JSON",
+      description: "Exporter le projet, éditer ou importer des items en JSON.",
+      href: `/scrum/projects/${projectId}/json`,
+      icon: FileJson,
+      ready: true,
+    },
   ];
 }
 
@@ -222,14 +249,17 @@ export async function ProjectDetailContent({
             <span>{project.visibility}</span>
           </div>
         </div>
-        <Button
-          nativeButton={false}
-          variant="outline"
-          render={<Link href={`/scrum/projects/${projectId}/edit`} />}
-        >
-          <Pencil className="size-4" aria-hidden />
-          Éditer
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            nativeButton={false}
+            variant="outline"
+            render={<Link href={`/scrum/projects/${projectId}/edit`} />}
+          >
+            <Pencil className="size-4" aria-hidden />
+            Éditer
+          </Button>
+          <DeleteProjectButton scrumId={projectId} projectName={project.name} />
+        </div>
       </header>
 
       <ProjectSummaryCard
@@ -267,7 +297,10 @@ export async function ProjectDetailContent({
               <Card key={board.id} className="h-full">
                 <CardHeader className="gap-1">
                   <div className="flex items-center gap-2">
-                    <Icon className="size-4 text-muted-foreground" aria-hidden />
+                    <Icon
+                      className="size-4 text-muted-foreground"
+                      aria-hidden
+                    />
                     <CardTitle className="text-sm">{board.label}</CardTitle>
                   </div>
                 </CardHeader>

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-22T00:00:00.000Z",
+  "categories": [
+    {
+      "id": "legumes",
+      "label": "Légumes",
+      "items": [
+        { "id": "tomate", "label": "Tomate", "unit": "g", "defaultQty": 100 },
+        { "id": "oignon", "label": "Oignon", "unit": "g", "defaultQty": 80 },
+        { "id": "ail", "label": "Ail", "unit": "gousse", "defaultQty": 1 },
+        { "id": "carotte", "label": "Carotte", "unit": "g", "defaultQty": 100 },
+        { "id": "courgette", "label": "Courgette", "unit": "g", "defaultQty": 120 }
+      ]
+    },
+    {
+      "id": "proteines",
+      "label": "Protéines",
+      "items": [
+        { "id": "poulet", "label": "Blanc de poulet", "unit": "g", "defaultQty": 150 },
+        { "id": "boeuf", "label": "Bœuf haché", "unit": "g", "defaultQty": 150 },
+        { "id": "oeuf", "label": "Œuf", "unit": "unité", "defaultQty": 1 },
+        { "id": "poisson", "label": "Filet de poisson", "unit": "g", "defaultQty": 150 },
+        { "id": "tofu", "label": "Tofu ferme", "unit": "g", "defaultQty": 120 }
+      ]
+    },
+    {
+      "id": "feculents",
+      "label": "Féculents",
+      "items": [
+        { "id": "riz", "label": "Riz", "unit": "g", "defaultQty": 80 },
+        { "id": "pates", "label": "Pâtes", "unit": "g", "defaultQty": 100 },
+        { "id": "pomme-de-terre", "label": "Pomme de terre", "unit": "g", "defaultQty": 150 },
+        { "id": "pain", "label": "Pain", "unit": "g", "defaultQty": 60 }
+      ]
+    },
+    {
+      "id": "laitiers",
+      "label": "Produits laitiers",
+      "items": [
+        { "id": "lait", "label": "Lait", "unit": "ml", "defaultQty": 200 },
+        { "id": "beurre", "label": "Beurre", "unit": "g", "defaultQty": 20 },
+        { "id": "creme", "label": "Crème fraîche", "unit": "ml", "defaultQty": 50 },
+        { "id": "fromage", "label": "Fromage râpé", "unit": "g", "defaultQty": 40 }
+      ]
+    },
+    {
+      "id": "epices",
+      "label": "Épices & condiments",
+      "items": [
+        { "id": "sel", "label": "Sel", "unit": "pincée", "defaultQty": 1 },
+        { "id": "poivre", "label": "Poivre", "unit": "pincée", "defaultQty": 1 },
+        { "id": "paprika", "label": "Paprika", "unit": "c.à.c", "defaultQty": 1 },
+        { "id": "huile-olive", "label": "Huile d'olive", "unit": "c.à.s", "defaultQty": 1 },
+        { "id": "basilic", "label": "Basilic frais", "unit": "feuille", "defaultQty": 5 }
+      ]
+    }
+  ]
+}

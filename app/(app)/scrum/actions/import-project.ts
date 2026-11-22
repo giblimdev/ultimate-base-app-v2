@@ -6,110 +6,120 @@ projectId:       <UltimateBaseApp>
 type:            action
 generic:         false
 
-role:            Server Action d'import d'un projet Scrum complet. Reçoit
-                 un ScrumTree validé (via scrumTreeSchema), réassigne un
-                 nouvel id au projet et à toutes les entités (pour éviter
-                 les collisions), puis crée une nouvelle ligne Scrum via
-                 createScrumRow. Retourne le scrumId créé pour que le
-                 client puisse rediriger.
+role:            Server Action d'import d'un projet Scrum complet. Reçoit un
+                 JSON (objet, ou chaîne JSON) au format complet OU simplifié,
+                 le valide et le convertit via buildScrumTree (nouveaux ids
+                 pour le projet et toutes les entités, relations epicId /
+                 sprintId / usId remappées). Corrige le bug précédent où la
+                 table de remappage des sprints associait chaque ancien id à
+                 lui-même (les US perdaient leur sprint). Crée ensuite une
+                 nouvelle ligne Scrum (saveScrums) via createScrumRow et
+                 retourne le scrumId pour la redirection client.
 
-flow:            importProjectTree(input) → scrumTreeSchema.safeParse →
-                 requireScrumAccess → deepCloneWithNewIds(tree) →
-                 createScrumRow({ tree, workspaceId, authorId }) →
-                 revalidatePath("/scrum/projects") → { ok: true, scrumId }.
+flow:            importProjectTree(input) → (string → JSON.parse) →
+                 buildScrumTree → si !ok : { ok: false, error, issues } →
+                 requireScrumAccess → createScrumRow({ tree, workspaceId,
+                 authorId }) → revalidatePath → { ok: true, data: { scrumId } }.
 
 ecosystem:       Scrum = [
-                   // ... (ecosystem Scrum canonique complet)
+                   "@/app/(app)/scrum/actions/bulk.ts",
+                   "@/app/(app)/scrum/actions/dnd.ts",
+                   "@/app/(app)/scrum/actions/epic.ts",
+                   "@/app/(app)/scrum/actions/feature.ts",
+                   "@/app/(app)/scrum/actions/import-project.ts",
+                   "@/app/(app)/scrum/actions/persona.ts",
+                   "@/app/(app)/scrum/actions/project.ts",
+                   "@/app/(app)/scrum/actions/sprint.ts",
+                   "@/app/(app)/scrum/actions/task.ts",
+                   "@/app/(app)/scrum/actions/us.ts",
+                   "@/app/(app)/scrum/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/dnd/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/edit/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/epics/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/features/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/json/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/personas/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/project-detail-content.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/sprints/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/tasks/page.tsx",
+                   "@/app/(app)/scrum/projects/[projectId]/us/page.tsx",
+                   "@/app/(app)/scrum/projects/import/page.tsx",
+                   "@/app/(app)/scrum/projects/new/page.tsx",
+                   "@/app/(app)/scrum/projects/page.tsx",
+                   "@/components/scrum/DeleteProjectButton.tsx",
+                   "@/components/scrum/DndBoard.tsx",
+                   "@/components/scrum/EpicBoard.tsx",
+                   "@/components/scrum/FeatureBoard.tsx",
+                   "@/components/scrum/JsonEditor.tsx",
+                   "@/components/scrum/PersonaBoard.tsx",
+                   "@/components/scrum/ProjectDndBoards.tsx",
+                   "@/components/scrum/ProjectForm.tsx",
+                   "@/components/scrum/ProjectJsonPanel.tsx",
+                   "@/components/scrum/ProjectSummaryCard.tsx",
+                   "@/components/scrum/SprintBoard.tsx",
+                   "@/components/scrum/TaskBoard.tsx",
+                   "@/components/scrum/UserStoryBoard.tsx",
+                   "@/lib/scrum/access.ts",
+                   "@/lib/scrum/bulk.ts",
+                   "@/lib/scrum/defaults.ts",
+                   "@/lib/scrum/import-export.ts",
+                   "@/lib/scrum/json-io.ts",
+                   "@/lib/scrum/mutations.ts",
+                   "@/lib/scrum/queries.ts",
+                   "@/lib/scrum/schema.ts",
+                   "@/lib/scrum/types.ts",
                  ]
-relatedFiles:    ["@/lib/scrum/schema.ts",
+relatedFiles:    ["@/lib/scrum/import-export.ts",
                   "@/lib/scrum/mutations.ts",
                   "@/lib/scrum/access.ts",
-                  "@/lib/scrum/defaults.ts"]
-imports:         ["next/cache", "@/lib/scrum/schema",
+                  "@/app/(app)/scrum/actions/project.ts",
+                  "@/app/(app)/scrum/projects/import/page.tsx"]
+imports:         ["next/cache", "@/lib/scrum/import-export",
                   "@/lib/scrum/mutations", "@/lib/scrum/access",
-                  "@/lib/scrum/defaults"]
+                  "@/app/(app)/scrum/actions/project"]
 exports:         ["importProjectTree"]
 useBy:           ["@/app/(app)/scrum/projects/import/page.tsx"]
 
-userStories:     ["*en tant qu'utilisateur je veux sauvegarder un projet entier importé depuis un JSON"]
+userStories:     ["*en tant qu'utilisateur je veux sauvegarder un projet entier importé depuis un JSON",
+                  "*en tant qu'utilisateur je veux que les liens US → epic/sprint et task → US soient conservés à l'import"]
 status:          wip
-pathChecked:     ✔true
-metaDataChecked: ✔true
-scriptChecked:   ✔true
+pathChecked:     ✘false
+metaDataChecked: ✘false
+scriptChecked:   ✘false
 */
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { scrumTreeSchema } from "@/lib/scrum/schema";
+import { buildScrumTree } from "@/lib/scrum/import-export";
 import { createScrumRow } from "@/lib/scrum/mutations";
 import { requireScrumAccess } from "@/lib/scrum/access";
-import { newId } from "@/lib/scrum/defaults";
-import type { ScrumTree } from "@/lib/scrum/types";
 import type { ActionResult } from "@/app/(app)/scrum/actions/project";
-
-function deepCloneWithNewIds(tree: ScrumTree): ScrumTree {
-  const now = new Date().toISOString();
-
-  const project = {
-    ...tree.project,
-    id: newId(),
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const features = tree.features.map((f) => ({ ...f, id: newId() }));
-  const personas = tree.personas.map((p) => ({ ...p, id: newId() }));
-  const epics = tree.epics.map((e) => ({ ...e, id: newId() }));
-
-  // Mapping des anciens ids → nouveaux ids pour les relations
-  const epicIdMap = new Map(
-    tree.epics.map((e, i) => [e.id, epics[i].id]),
-  );
-  const sprintIdMap = new Map(
-    tree.sprints.map((s, i) => [s.id, tree.sprints[i].id]),
-  );
-  // ⚠️ sprints sont clonés juste après, on construit la map à partir des originaux
-  const sprints = tree.sprints.map((s) => ({ ...s, id: newId() }));
-
-  const userStories = tree.userStories.map((u) => ({
-    ...u,
-    id: newId(),
-    epicId: u.epicId ? epicIdMap.get(u.epicId) ?? null : null,
-    sprintId: u.sprintId ? sprintIdMap.get(u.sprintId) ?? null : null,
-  }));
-
-  const usIdMap = new Map(
-    tree.userStories.map((u, i) => [u.id, userStories[i].id]),
-  );
-
-  const tasks = tree.tasks.map((t) => ({
-    ...t,
-    id: newId(),
-    usId: t.usId ? usIdMap.get(t.usId) ?? null : null,
-  }));
-
-  return { project, features, personas, epics, userStories, tasks, sprints };
-}
 
 export async function importProjectTree(
   input: unknown,
 ): Promise<ActionResult<{ scrumId: string }>> {
-  const parsed = scrumTreeSchema.safeParse(input);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: "JSON de projet invalide.",
-      issues: parsed.error.issues.map(
-        (i) => `${i.path.join(".") || "(racine)"} : ${i.message}`,
-      ),
-    };
+  let raw: unknown = input;
+
+  if (typeof input === "string") {
+    try {
+      raw = JSON.parse(input);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "JSON invalide (syntaxe).";
+      return { ok: false, error: `JSON invalide : ${message}` };
+    }
+  }
+
+  const built = buildScrumTree(raw);
+  if (!built.ok) {
+    return { ok: false, error: built.error, issues: built.issues };
   }
 
   const access = await requireScrumAccess();
-  const tree = deepCloneWithNewIds(parsed.data);
 
   const row = await createScrumRow({
-    tree,
+    tree: built.tree,
     workspaceId: access.workspaceId,
     authorId: access.userId,
   });

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "exportedAt": "2026-11-22T00:00:00.000Z",
+  "recipe": {
+    "id": "rec_poulet_basilic",
+    "slug": "poulet-basilic",
+    "title": "Poulet sauté au basilic",
+    "description": "Un plat rapide, parfumé, prêt en 20 minutes.",
+    "servings": 2,
+    "prepTimeMin": 10,
+    "cookTimeMin": 10,
+    "difficulty": "EASY",
+    "category": "plat",
+    "tags": ["rapide", "asiatique"],
+    "allergens": ["soja", "sesame"],
+    "ingredients": [
+      { "ingredientId": "poulet", "label": "Blanc de poulet", "qty": 300, "unit": "g" },
+      { "ingredientId": "ail", "label": "Ail", "qty": 2, "unit": "gousse" },
+      { "ingredientId": "basilic", "label": "Basilic frais", "qty": 10, "unit": "feuille" },
+      { "ingredientId": "huile-olive", "label": "Huile d'olive", "qty": 2, "unit": "c.à.s" },
+      { "ingredientId": "sel", "label": "Sel", "qty": 1, "unit": "pincée" }
+    ],
+    "steps": [
+      { "n": 1, "text": "Couper le poulet en dés, saler." },
+      { "n": 2, "text": "Faire chauffer l'huile, saisir le poulet 5 min." },
+      { "n": 3, "text": "Ajouter l'ail, le basilic, cuire 2 min et servir." }
+    ],
+    "createdAt": "2026-11-22T00:00:00.000Z",
+    "updatedAt": "2026-11-22T00:00:00.000Z"
+  }
+}

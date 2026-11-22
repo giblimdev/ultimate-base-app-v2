@@ -21,7 +21,7 @@ role:            Couche de lecture du module Scrum. Expose les requêtes
                  car il a été validé à l'écriture.
 
 flow:            listScrumProjects() → prisma.scrum.findMany({ where:
-                 { deltedAt: null }, orderBy: createdAt desc }) → mappe
+                 { deletedAt: null }, orderBy: createdAt desc }) → mappe
                  chaque ligne vers un ProjectSummary minimal (id, name,
                  key, status, methodology, visibility, progressPercent,
                  counts calculés depuis saveScrums, dates). loadScrumTree
@@ -29,6 +29,31 @@ flow:            listScrumProjects() → prisma.scrum.findMany({ where:
                  → ScrumTree | null. ensureScrumTree(scrumId) → si
                  saveScrums null, crée un arbre vide via createEmptyTree
                  et l'écrit (utile pour les brouillons).
+
+--- GUIDE IA — LIRE AVANT TOUTE MODIFICATION ---
+
+INTERDIT :
+  ✘ Ne PAS utiliser `connection()` ici — ce helper est appelé depuis des
+     Server Components ; c'est à la PAGE de déclarer `connection()` et/ou
+     d'envelopper l'appel dans <Suspense>.
+  ✘ Ne PAS ajouter `"use cache"` sans cacheLife/cacheTag explicites.
+
+AUTORISÉ :
+  ✔ Ajouter de nouvelles fonctions de lecture (ex: getScrumById).
+  ✔ Ajouter des filtres en paramètre (status, visibility…).
+
+PIÈGES :
+  ⚠ `asTree` fait confiance à la forme du JSON (validé à l'écriture via
+     scrumTreeSchema). Ne PAS retirer le garde-fou `if (!candidate.project
+     || !Array.isArray(candidate.features)) return null`.
+  ⚠ `createdAt` / `updatedAt` sont des `Date` Prisma → toujours
+     `.toISOString()` avant de renvoyer au client.
+  ⚠ La colonne s'appelle bien `deletedAt` (pas `deltedAt`).
+
+CONVENTIONS PROJET :
+  • Tokens shadcn uniquement (côté UI).
+  • Mobile first.
+  • En-tête Genesis obligatoire.
 
 ecosystem:       Scrum = [
                    "@/app/(app)/scrum/page.tsx",
@@ -119,7 +144,7 @@ function asTree(raw: unknown): ScrumTree | null {
 
 export async function listScrumProjects(): Promise<ScrumListItem[]> {
   const rows = await prisma.scrum.findMany({
-    where: { deltedAt: null },
+    where: { deletedAt: null },
     orderBy: { createdAt: "desc" },
   });
 
@@ -148,15 +173,17 @@ export async function loadScrumTree(
   scrumId: string,
 ): Promise<ScrumTree | null> {
   const row = await prisma.scrum.findFirst({
-    where: { id: scrumId, deltedAt: null },
+    where: { id: scrumId, deletedAt: null },
   });
   if (!row) return null;
   return asTree(row.saveScrums);
 }
 
-export async function ensureScrumTree(scrumId: string): Promise<ScrumTree | null> {
+export async function ensureScrumTree(
+  scrumId: string,
+): Promise<ScrumTree | null> {
   const row = await prisma.scrum.findFirst({
-    where: { id: scrumId, deltedAt: null },
+    where: { id: scrumId, deletedAt: null },
   });
   if (!row) return null;
 

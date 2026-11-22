@@ -81,6 +81,6 @@ export async function replaceScrumTree(scrumId: string, tree: ScrumTree) {
 export async function softDeleteScrum(scrumId: string) {
   return prisma.scrum.update({
     where: { id: scrumId },
-    data: { deltedAt: new Date() },
+    data: { deletedAt: new Date() },
   });
 }

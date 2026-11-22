@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-22T00:00:00.000Z",
+  "allergens": [
+    { "id": "gluten", "label": "Gluten", "icon": "🌾" },
+    { "id": "lactose", "label": "Lactose", "icon": "🥛" },
+    { "id": "oeuf", "label": "Œuf", "icon": "🥚" },
+    { "id": "arachide", "label": "Arachide", "icon": "🥜" },
+    { "id": "fruits-coque", "label": "Fruits à coque", "icon": "🌰" },
+    { "id": "poisson", "label": "Poisson", "icon": "🐟" },
+    { "id": "crustaces", "label": "Crustacés", "icon": "🦐" },
+    { "id": "soja", "label": "Soja", "icon": "🫘" },
+    { "id": "sesame", "label": "Sésame", "icon": "🌱" },
+    { "id": "moutarde", "label": "Moutarde", "icon": "🌭" },
+    { "id": "celeri", "label": "Céleri", "icon": "🥬" },
+    { "id": "sulfites", "label": "Sulfites", "icon": "🍷" }
+  ]
+}

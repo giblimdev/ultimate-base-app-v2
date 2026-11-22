@@ -7,23 +7,16 @@ type:            page
 generic:         false
 
 role:            Page DnD d'un projet Scrum. Server Component wrapper +
-                 Suspense (requis par Next.js 16 + cacheComponents pour
-                 les routes dynamiques). Le composant enfant DndContent
-                 charge l'arbre via loadScrumTree, trie les entités par
-                 position, et rend 3 DndBoard : Tasks → US, US → Epics,
-                 US → Sprints. Chaque DndBoard reçoit ses items, ses
-                 colonnes, un onMove (rattachement) et un onReorder
-                 (réordonnancement), qui appellent les Server Actions
-                 correspondantes. Le router.refresh() est géré dans
-                 DndBoard après chaque action réussie.
+                 Suspense (requis par Next.js 16 + cacheComponents). DndContent
+                 charge l'arbre via loadScrumTree puis délègue TOUT le rendu
+                 interactif à ProjectDndBoards (Client Component) en ne lui
+                 passant que des données sérialisables. Corrige l'erreur
+                 « Functions cannot be passed directly to Client Components »
+                 de l'ancienne version (onMove/onReorder inline).
 
 flow:            DndPage({ params }) → <Suspense> → DndContent(params) →
-                 loadScrumTree → tri par position → 3 sections :
-                 <DndBoard> pour tasks→US (moveTaskToUserStory +
-                 reorderTasksInUserStory), <DndBoard> pour US→epics
-                 (moveUserStoryToEpic + reorderUserStoriesInEpic),
-                 <DndBoard> pour US→sprints (moveUserStoryToSprint +
-                 reorderUserStoriesInSprint).
+                 loadScrumTree → notFound si null → header + <ProjectDndBoards
+                 scrumId tasks userStories epics sprints />.
 
 ecosystem:       Scrum = [
                    "@/app/(app)/scrum/actions/dnd.ts",
@@ -47,11 +40,13 @@ ecosystem:       Scrum = [
                    "@/app/(app)/scrum/projects/[projectId]/us/page.tsx",
                    "@/app/(app)/scrum/projects/new/page.tsx",
                    "@/app/(app)/scrum/projects/page.tsx",
+                   "@/components/scrum/DeleteProjectButton.tsx",
                    "@/components/scrum/DndBoard.tsx",
                    "@/components/scrum/EpicBoard.tsx",
                    "@/components/scrum/FeatureBoard.tsx",
                    "@/components/scrum/JsonEditor.tsx",
                    "@/components/scrum/PersonaBoard.tsx",
+                   "@/components/scrum/ProjectDndBoards.tsx",
                    "@/components/scrum/ProjectForm.tsx",
                    "@/components/scrum/ProjectSummaryCard.tsx",
                    "@/components/scrum/SprintBoard.tsx",
@@ -65,46 +60,31 @@ ecosystem:       Scrum = [
                    "@/lib/scrum/schema.ts",
                    "@/lib/scrum/types.ts",
                  ]
-relatedFiles:    ["@/components/scrum/DndBoard.tsx",
+relatedFiles:    ["@/components/scrum/ProjectDndBoards.tsx",
+                  "@/components/scrum/DndBoard.tsx",
                   "@/app/(app)/scrum/actions/dnd.ts",
-                  "@/lib/scrum/queries.ts",
-                  "@/lib/scrum/types.ts"]
+                  "@/lib/scrum/queries.ts"]
 imports:         ["react", "next/navigation", "next/link", "lucide-react",
                   "@/lib/scrum/queries",
-                  "@/components/scrum/DndBoard",
-                  "@/app/(app)/scrum/actions/dnd",
+                  "@/components/scrum/ProjectDndBoards",
                   "@/components/ui/button"]
-exports:         ["default"]
+exports:         ["default DndPage"]
 useBy:           ["@/app/(app)/scrum/projects/[projectId]/project-detail-content.tsx"]
 
 userStories:     ["*en tant qu'utilisateur je veux glisser-déposer mes tâches et US entre les colonnes",
                   "*en tant qu'utilisateur je veux réordonner mes tâches et US dans une colonne"]
 status:          wip
-pathChecked:     ✔true
-metaDataChecked: ✔true
-scriptChecked:   ✔true
+pathChecked:     ✘false
+metaDataChecked: ✘false
+scriptChecked:   ✘false
 */
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { loadScrumTree } from "@/lib/scrum/queries";
-import {
-  DndBoard,
-  type DndColumn,
-  type DndItem,
-} from "@/components/scrum/DndBoard";
-import {
-  moveTaskToUserStory,
-  reorderTasksInUserStory,
-  moveUserStoryToEpic,
-  reorderUserStoriesInEpic,
-  moveUserStoryToSprint,
-  reorderUserStoriesInSprint,
-} from "@/app/(app)/scrum/actions/dnd";
+import { ProjectDndBoards } from "@/components/scrum/ProjectDndBoards";
 import { Button } from "@/components/ui/button";
-
-const NO_COLUMN_ID = "__none__";
 
 async function DndContent({
   params,
@@ -114,50 +94,6 @@ async function DndContent({
   const { projectId } = await params;
   const tree = await loadScrumTree(projectId);
   if (!tree) notFound();
-
-  // Flux 1 : Tasks → US (tri par position)
-  const sortedTasks = tree.tasks
-    .slice()
-    .sort((a, b) => a.position - b.position);
-  const taskItems: DndItem[] = sortedTasks.map((t) => ({
-    id: t.id,
-    label: t.title,
-    columnId: t.usId ?? NO_COLUMN_ID,
-  }));
-  const taskColumns: DndColumn[] = [
-    { id: NO_COLUMN_ID, label: "Sans US" },
-    ...tree.userStories.map((u) => ({ id: u.id, label: u.title })),
-  ];
-
-  // Flux 2 : US → Epics (tri par position)
-  const sortedUsForEpic = tree.userStories
-    .slice()
-    .sort((a, b) => a.position - b.position);
-  const usForEpicItems: DndItem[] = sortedUsForEpic.map((u) => ({
-    id: u.id,
-    label: u.title,
-    description: u.asA,
-    columnId: u.epicId ?? NO_COLUMN_ID,
-  }));
-  const epicColumns: DndColumn[] = [
-    { id: NO_COLUMN_ID, label: "Sans epic" },
-    ...tree.epics.map((e) => ({ id: e.id, label: e.title })),
-  ];
-
-  // Flux 3 : US → Sprints (tri par position)
-  const sortedUsForSprint = tree.userStories
-    .slice()
-    .sort((a, b) => a.position - b.position);
-  const usForSprintItems: DndItem[] = sortedUsForSprint.map((u) => ({
-    id: u.id,
-    label: u.title,
-    description: u.asA,
-    columnId: u.sprintId ?? NO_COLUMN_ID,
-  }));
-  const sprintColumns: DndColumn[] = [
-    { id: NO_COLUMN_ID, label: "Backlog" },
-    ...tree.sprints.map((s) => ({ id: s.id, label: s.name })),
-  ];
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -181,73 +117,13 @@ async function DndContent({
         </p>
       </header>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">Tasks → User Stories</h2>
-        <DndBoard
-          items={taskItems}
-          columns={taskColumns}
-          onMove={async (taskId, targetUsId) => {
-            await moveTaskToUserStory({
-              scrumId: projectId,
-              taskId,
-              targetUsId: targetUsId === NO_COLUMN_ID ? null : targetUsId,
-            });
-          }}
-          onReorder={async (columnId, orderedIds) => {
-            await reorderTasksInUserStory({
-              scrumId: projectId,
-              usId: columnId === NO_COLUMN_ID ? null : columnId,
-              orderedIds,
-            });
-          }}
-        />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">US → Epics</h2>
-        <DndBoard
-          items={usForEpicItems}
-          columns={epicColumns}
-          onMove={async (usId, targetEpicId) => {
-            await moveUserStoryToEpic({
-              scrumId: projectId,
-              usId,
-              targetEpicId:
-                targetEpicId === NO_COLUMN_ID ? null : targetEpicId,
-            });
-          }}
-          onReorder={async (columnId, orderedIds) => {
-            await reorderUserStoriesInEpic({
-              scrumId: projectId,
-              epicId: columnId === NO_COLUMN_ID ? null : columnId,
-              orderedIds,
-            });
-          }}
-        />
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-semibold">US → Sprints</h2>
-        <DndBoard
-          items={usForSprintItems}
-          columns={sprintColumns}
-          onMove={async (usId, targetSprintId) => {
-            await moveUserStoryToSprint({
-              scrumId: projectId,
-              usId,
-              targetSprintId:
-                targetSprintId === NO_COLUMN_ID ? null : targetSprintId,
-            });
-          }}
-          onReorder={async (columnId, orderedIds) => {
-            await reorderUserStoriesInSprint({
-              scrumId: projectId,
-              sprintId: columnId === NO_COLUMN_ID ? null : columnId,
-              orderedIds,
-            });
-          }}
-        />
-      </section>
+      <ProjectDndBoards
+        scrumId={projectId}
+        tasks={tree.tasks}
+        userStories={tree.userStories}
+        epics={tree.epics}
+        sprints={tree.sprints}
+      />
     </div>
   );
 }
